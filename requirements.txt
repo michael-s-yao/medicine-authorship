@@ -1,0 +1,13 @@
+requests
+tqdm
+transformers
+datasets
+torch
+genderizer3
+gender_guesser
+global_gender_predictor
+openai
+accelerate
+click
+umap-learn
+thefuzz
