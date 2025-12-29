@@ -221,6 +221,8 @@ raw/
 stats/
 docs/
 *.json
+Medicine\ Authorship/
+*.parquet
 
 # Logs
 *.out

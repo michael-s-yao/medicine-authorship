@@ -11,3 +11,4 @@ accelerate
 click
 umap-learn
 thefuzz
+statsmodels

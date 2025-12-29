@@ -156,7 +156,7 @@ def main(
 
     # Q: How often do we see female vs male authors?
     author_analysis_all_fn = os.path.join(
-        str(savedir), f"all_authors_analysis_{broad_subject}.csv"
+        str(savedir), f"all_authors_analysis_{broad_subject}.parquet"
     )
     if not os.path.isfile(author_analysis_all_fn) or overwrite:
         author_analysis(
@@ -174,7 +174,7 @@ def main(
 
     # Q: How often do we see female vs male first authors?
     author_analysis_first_fn = os.path.join(
-        str(savedir), f"first_author_analysis_{broad_subject}.csv"
+        str(savedir), f"first_author_analysis_{broad_subject}.parquet"
     )
     if not os.path.isfile(author_analysis_first_fn) or overwrite:
         author_analysis(
@@ -192,7 +192,7 @@ def main(
 
     # Q: How often do we see female vs male last authors?
     author_analysis_last_fn = os.path.join(
-        str(savedir), f"last_author_analysis_{broad_subject}.csv"
+        str(savedir), f"last_author_analysis_{broad_subject}.parquet"
     )
     if not os.path.isfile(author_analysis_last_fn) or overwrite:
         author_analysis(
@@ -289,7 +289,7 @@ def author_analysis(
     """
     Run analysis on the gender distributions of paper authors.
     Input:
-        save_fn: the CSV filename to save the analysis results to.
+        save_fn: the Parquet filename to save the analysis results to.
         article_df: the dataframe containing the article data.
         gender_df: the dataframe containing the gender data.
         journal_df: the dataframe containing the journal data.
@@ -313,10 +313,18 @@ def author_analysis(
         num_total_references = -1
         num_self_references = -1
         if not citation_data.empty:
-            num_total_citations = citation_data.num_total_citations
-            num_self_citations = citation_data.num_author_self_citations
-            num_total_references = citation_data.num_total_references
-            num_self_references = citation_data.num_author_self_references
+            num_total_citations = int(
+                citation_data.iloc[0].num_total_citations
+            )
+            num_self_citations = int(
+                citation_data.iloc[0].num_author_self_citations
+            )
+            num_total_references = int(
+                citation_data.iloc[0].num_total_references
+            )
+            num_self_references = int(
+                citation_data.iloc[0].num_author_self_references.item()
+            )
         authors = gender_df[gender_df.title == paper.title]
         if author_idx is not None:
             authors = authors[authors.author_idx == (
@@ -324,7 +332,10 @@ def author_analysis(
             )]
 
         journal = json.loads(paper.journal)[1]
-        journal_metadata = journal_df[journal_df.Title == journal].iloc[0]
+        journal_df_subset = journal_df[journal_df.Title == journal]
+        if journal_df_subset.empty:
+            continue
+        journal_metadata = journal_df_subset.iloc[0]
         for _, single_author in authors.iterrows():
             gender: Optional[str] = None
             yp = single_author[METHOD2COLS[method]].to_numpy().squeeze()
@@ -351,10 +362,12 @@ def author_analysis(
                     "journal_is_open_access": "yes" == str.lower(
                         str(journal_metadata[f"Open Access {paper.year - 1}"])
                     ),
-                    "journal_sjr": journal_metadata[f"SJR {paper.year - 1}"],
-                    "journal_h_index": journal_metadata[
-                        f"H index {paper.year - 1}"
-                    ],
+                    "journal_sjr": float(
+                        journal_metadata[f"SJR {paper.year - 1}"]
+                    ),
+                    "journal_h_index": float(
+                        journal_metadata[f"H index {paper.year - 1}"]
+                    ),
                     "num_total_citations": num_total_citations,
                     "num_self_citations": num_self_citations,
                     "num_total_references": num_total_references,
@@ -362,7 +375,7 @@ def author_analysis(
                 })
 
     df = pd.DataFrame.from_records(results)
-    return df.to_csv(save_fn, index=False)
+    return df.to_parquet(save_fn, index=False)
 
 
 def fractional_gender_analysis(
@@ -402,17 +415,28 @@ def fractional_gender_analysis(
         num_total_references = -1
         num_self_references = -1
         if not citation_data.empty:
-            num_total_citations = citation_data.num_total_citations
-            num_self_citations = citation_data.num_author_self_citations
-            num_total_references = citation_data.num_total_references
-            num_self_references = citation_data.num_author_self_references
+            num_total_citations = int(
+                citation_data.iloc[0].num_total_citations
+            )
+            num_self_citations = int(
+                citation_data.iloc[0].num_author_self_citations
+            )
+            num_total_references = int(
+                citation_data.iloc[0].num_total_references
+            )
+            num_self_references = int(
+                citation_data.iloc[0].num_author_self_references.item()
+            )
         authors = gender_df[gender_df.title == paper.title]
 
         if authors.empty:
             continue
 
         journal = json.loads(paper.journal)[1]
-        journal_metadata = journal_df[journal_df.Title == journal].iloc[0]
+        journal_df_subset = journal_df[journal_df.Title == journal]
+        if journal_df_subset.empty:
+            continue
+        journal_metadata = journal_df_subset.iloc[0]
 
         count_female, count_male = 0, 0
         for _, single_author in authors.iterrows():
@@ -444,8 +468,10 @@ def fractional_gender_analysis(
             "journal_is_open_access": "yes" == (
                 str(journal_metadata[f"Open Access {paper.year - 1}"]).lower()
             ),
-            "journal_sjr": journal_metadata[f"SJR {paper.year - 1}"],
-            "journal_h_index": journal_metadata[f"H index {paper.year - 1}"],
+            "journal_sjr": float(journal_metadata[f"SJR {paper.year - 1}"]),
+            "journal_h_index": float(
+                journal_metadata[f"H index {paper.year - 1}"]
+            ),
             "num_total_citations": num_total_citations,
             "num_self_citations": num_self_citations,
             "num_total_references": num_total_references,
