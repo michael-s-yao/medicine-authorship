@@ -20,6 +20,23 @@ from typing import Any, Dict, Final, List, Sequence, Tuple, Union
 
 BROAD_SUBJECTS: Final[Dict[str, str]] = {
     "Medicine": "medicine.parquet",
+    "Allergy": "allergy.parquet",
+    "Cardiology": "cardiology.parquet",
+    "Critical Care": "criticalcare.parquet",
+    "Endocrinology": "endocrinology.parquet",
+    "Gastroenterology": "gastroenterology.parquet",
+    "Geriatrics": "geriatrics.parquet",
+    "Infectious Disease": "infectiousdisease.parquet",
+    "Nephrology": "nephrology.parquet",
+    "Oncolocy": "oncology.parquet",
+    "Primary Care": "primarycare.parquet",
+    "Pulmonology": "pulmonology.parquet",
+    "Rheumatology": "rheumatology.parquet"
+}
+
+
+BROAD_SUBJECTS_ABBR: Final[Dict[str, str]] = {
+    "Medicine": "medicine.parquet",
     "Rheum": "rheumatology.parquet",
     "Pulm": "pulmonology.parquet",
     "PC": "primarycare.parquet",

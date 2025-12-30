@@ -22,6 +22,7 @@ def main(
     thresh: float = 0.8,
     raw_datadir: Union[Path, str] = "raw/genders",
     hf_dataset: str = "michaelsyao/MedicineAuthorship",
+    savedir: Union[Path, str] = "Medicine Authorship",
     min_year: int = 2015,
     max_year: int = 2025
 ):
@@ -33,6 +34,9 @@ def main(
         encoding="latin1"
     )
     journal_metadata_df = journal_metadata.to_pandas()
+    os.makedirs(str(savedir), exist_ok=True)
+    for subdir in ["All Authors", "First Author", "Last Author"]:
+        os.makedirs(os.path.join(str(savedir), subdir), exist_ok=True)
 
     final_cols: Final[List[str]] = [
         "gender",
@@ -52,12 +56,12 @@ def main(
         llm_output_cols = [
             col for col in df.columns if col.startswith("Llama-3.1-8B_")
         ]
-        thresh = ceil(thresh * len(llm_output_cols))
+        threshold = ceil(thresh * len(llm_output_cols))
         M, F, U = "male", "female", "unknown"
         m_counts = (df[llm_output_cols] == M).sum(axis=1)
         f_counts = (df[llm_output_cols] == F).sum(axis=1)
         df["gender"] = np.where(
-            m_counts >= thresh, M, np.where(f_counts >= thresh, F, U)
+            m_counts >= threshold, M, np.where(f_counts >= threshold, F, U)
         )
 
         citation_ds = load_dataset(
@@ -100,12 +104,29 @@ def main(
             }
         )
 
-        df[final_cols].to_parquet(f"all_authors_{fn}", index=False)
+        df[final_cols].to_parquet(
+            os.path.join(str(savedir), "All Authors", fn), index=False
+        )
         df.drop_duplicates(subset=["doi"])[final_cols].to_parquet(
-            f"first_author_{fn}", index=False
+            os.path.join(str(savedir), "First Author", fn), index=False
         )
         df.drop_duplicates(subset=["doi"], keep="last")[final_cols].to_parquet(
-            f"last_author_{fn}", index=False
+            os.path.join(str(savedir), "Last Author", fn), index=False
+        )
+
+        out = df.groupby("doi").agg(
+            fraq_male=("gender", lambda s: (s == "male").mean()),
+            fraq_female=("gender", lambda s: (s == "female").mean()),
+            num_total_authors=("gender", "size")
+        )
+        cols = ["fraq_female", "fraq_male", "num_total_authors"]
+        cols.extend(final_cols[1:])
+        out = pd.merge(
+            df.drop_duplicates(subset=["doi"]), out, on="doi", how="right"
+        )
+        out[cols].to_parquet(
+            os.path.join(str(savedir), "Fractional Gender Analysis", fn),
+            index=False
         )
 
 

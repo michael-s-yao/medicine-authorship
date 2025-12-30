@@ -9,15 +9,16 @@ Licensed under the MIT License. Copyright University of Pennsylvania 2025.
 """
 import click
 import matplotlib.pyplot as plt
-import numpy as np
 import os
 import pandas as pd
+import seaborn as sns
 import sys
+from matplotlib.ticker import PercentFormatter
 from pathlib import Path
-from typing import Any, Final, List, Optional, Union
+from typing import Final, List, Optional, Union
 
 sys.path.append(str(Path(__file__).parent.parent.parent.resolve()))
-from core.plot_utils import BROAD_SUBJECTS, radar_factory  # noqa
+from core.plot_utils import BROAD_SUBJECTS  # noqa
 
 
 @click.command()
@@ -37,59 +38,64 @@ from core.plot_utils import BROAD_SUBJECTS, radar_factory  # noqa
 )
 def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
     """Make plots of paper gender proportions."""
-    plt.rcParams["font.sans-serif"] = ["Arial"]
-    plt.rcParams["font.family"] = "Arial"
-    colors = ["#DD1717"]
+    plt.rcParams["font.family"] = ["Arial"]
+    BLUE: Final[str] = "#3170AD"
+    RED: Final[str] = "#90312C"
     if savedir is not None:
         os.makedirs(os.path.abspath(str(savedir)), exist_ok=True)
 
-    data = get_data(datadir)
-    theta = radar_factory(len(data[0]), frame="polygon")
+    cols: Final[List[str]] = ["fraq_female", "fraq_male"]
+    sub_datadir = os.path.join(str(datadir), "Fractional Gender Analysis")
+    dfs: List[pd.DataFrame] = []
+    for bs, fn in BROAD_SUBJECTS.items():
+        df = pd.read_parquet(os.path.join(sub_datadir, fn))[cols]
+        df = df.melt(value_vars=cols, value_name="fraq").assign(
+            gender=lambda d: d["variable"].map({
+                "fraq_female": "Female", "fraq_male": "Male"
+            })
+        )
+        df = df[["fraq", "gender"]]
+        df["Broad Subject"] = bs
+        df = df.rename(
+            columns={
+                "fraq": "Proportion of Author List",
+                "gender": "Author Gender"
+            }
+        )
+        dfs.append(df)
 
-    spoke_labels = data.pop(0)
-
-    fig, axs = plt.subplots(
-        figsize=(10.0, 2.5),
-        nrows=1,
-        ncols=3,
-        subplot_kw={"projection": "radar"}
+    _, ax = plt.subplots(figsize=(12, 6))
+    sns.violinplot(
+        data=pd.concat(dfs, ignore_index=True),
+        x="Broad Subject",
+        y="Proportion of Author List",
+        hue="Author Gender",
+        split=True,
+        gap=0.1,
+        cut=0,
+        inner="quart",
+        palette=[RED, BLUE],
+        alpha=0.8,
+        ax=ax
     )
-
-    for i, (ax, (title, case)) in enumerate(zip(axs.flat, data)):
-        ax.set_rticks(
-            [10.0, 20.0, 30.0, 40.0, 50.0], labels=["", "20", "", "40", ""]
-        )
-        ax.set_ylim(0.0, 55.0)
-        ax.set_title(
-            title + "\n",
-            weight="bold",
-            size="medium",
-            position=(0.5, 1.3),
-            horizontalalignment="center",
-            verticalalignment="center"
-        )
-        ax.plot(
-            theta,
-            (100.0 / 3.0) * np.ones_like(theta),
-            color="k",
-            linestyle=":",
-            alpha=0.75
-        )
-        np_case = 100.0 * np.asarray(case)
-        for d, color in zip(np_case, colors):
-            ax.plot(theta, d, color=color)
-            ax.fill(theta, d, facecolor=color, alpha=0.25, label="_nolegend_")
-        ax.set_varlabels(spoke_labels)
-        ax.annotate(
-            f"({chr(ord('a') + i)})",
-            xy=(-0.1, 1.2),
-            xycoords="axes fraction",
-            fontweight="bold"
-        )
+    ax.set_xlabel(ax.get_xlabel(), fontdict={"weight": "bold"})
+    ax.set_ylabel(ax.get_ylabel(), fontdict={"weight": "bold"})
+    plt.gca().yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
+    ax.tick_params(axis="x", labelrotation=30)
+    for x in ax.get_xticklabels():
+        x.set_horizontalalignment("right")
+    sns.move_legend(ax, "center left", bbox_to_anchor=(1, 0.5))
+    for ell in ax.lines:
+        ell.set_linestyle(":")
+        ell.set_linewidth(1.5)
+        ell.set_color("black")
+        ell.set_alpha(0.8)
+    for ell in ax.lines[1::3]:
+        ell.set_linestyle("-")
 
     if savedir is not None:
         plt.savefig(
-            os.path.join(str(savedir), "author_lists.pdf"),
+            os.path.join(str(savedir), "fig4.pdf"),
             transparent=True,
             dpi=600,
             bbox_inches="tight"
@@ -97,26 +103,6 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
     else:
         plt.show()
     plt.close()
-
-
-def get_data(datadir: Union[Path, str] = "Medicine Authorship") -> List[Any]:
-    data: List[Any] = [list(BROAD_SUBJECTS.keys())]
-    thresh: Final[List[float]] = [-1.0 * np.inf, 1.0 / 3.0, 2.0 / 3.0, np.inf]
-
-    sub_datadir = os.path.join(str(datadir), "Fractional Gender Analysis")
-
-    for i, category in enumerate(["Low", "Medium", "High"]):
-        female_data = []
-        for bs in data[0]:
-            df = pd.read_parquet(os.path.join(sub_datadir, BROAD_SUBJECTS[bs]))
-            total = len(df)
-            f_mask = np.logical_and(
-                df.freq_female < thresh[i + 1], df.freq_female >= thresh[i]
-            )
-            female_data.append(float(f_mask.sum()) / total)
-        data.append((category, [female_data]))
-
-    return data
 
 
 if __name__ == "__main__":

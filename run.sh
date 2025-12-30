@@ -36,3 +36,5 @@ for subject in \
   echo $subject
   python scripts/run_analysis.py -m llm -s $subject
 done
+
+python scripts/build_gender_df.py
