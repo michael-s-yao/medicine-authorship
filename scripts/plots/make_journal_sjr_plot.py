@@ -14,12 +14,14 @@ import os
 import pandas as pd
 import scipy.stats as stats
 import statsmodels.api as sm  # type: ignore
+import statsmodels.formula.api as smf  # type: ignore
 import sys
+from matplotlib.ticker import AutoMinorLocator
 from pathlib import Path
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Dict, Final, List, Optional, Union
 
 sys.path.append(str(Path(__file__).parent.parent.parent.resolve()))
-from core.plot_utils import BROAD_SUBJECTS, radar_factory  # noqa
+from core.plot_utils import BROAD_SUBJECTS, fmt_pval  # noqa
 
 
 @click.command()
@@ -37,50 +39,217 @@ from core.plot_utils import BROAD_SUBJECTS, radar_factory  # noqa
     show_default=True,
     help="Optional figure savepath."
 )
-def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
+def main(
+    datadir: Union[Path, str],
+    savedir: Optional[Union[Path, str]],
+    confidence_level: float = 0.99
+):
     """Make journal SJR analysis plots."""
-    plt.rcParams["font.sans-serif"] = ["Arial"]
-    plt.rcParams["font.family"] = "Arial"
-    colors = ["#0F4392", "#DD1717"]
-    linestyles = ["-.", ":"]
-    if savedir is not None:
-        os.makedirs(os.path.abspath(str(savedir)), exist_ok=True)
+    plt.rcParams["font.family"] = ["Arial"]
+    BLUE: Final[str] = "#3170AD"
+    RED: Final[str] = "#90312C"
 
-    mu_data, sem_data = get_sjr_data(datadir)
-    theta = radar_factory(len(mu_data[0]), frame="polygon")
+    oa_df = get_open_access_data(datadir)
+    sjr_df = get_sjr_data(datadir)
 
-    spoke_labels, _ = mu_data.pop(0), sem_data.pop(0)
+    fig, (oa_ax, change_oa_ax, ax) = plt.subplots(1, 3, figsize=(12, 12))
+    plt.subplots_adjust(wspace=0.8)
 
-    fig, axs = plt.subplots(
-        figsize=(10.0, 2.5),
-        nrows=1,
-        ncols=3,
-        subplot_kw={"projection": "radar"}
+    oa_ax.set_xlim(0.0, 100.0)
+    oa_ax.set_ylim(len(sjr_df) + 0.5, -1.0)
+    change_oa_ax.set_xlim(-0.2, 0.2)
+    change_oa_ax.set_ylim(len(sjr_df) + 0.5, -1.0)
+    ax.set_ylim(len(sjr_df) + 0.5, -1.0)
+    oa_ax.xaxis.set_minor_locator(AutoMinorLocator(4))
+    change_oa_ax.xaxis.set_minor_locator(AutoMinorLocator(5))
+    ax.xaxis.set_minor_locator(AutoMinorLocator(5))
+    for i in range(len(sjr_df)):
+        if (i % 2):
+            continue
+        oa_ax.axhspan(
+            i - 0.55,
+            i + 0.45,
+            xmin=-0.8,
+            xmax=5.11,
+            color="gray",
+            alpha=0.1,
+            ec=None,
+            clip_on=False
+        )
+    oa_ax.set_yticks([])
+    oa_ax.set_yticklabels([])
+    change_oa_ax.set_yticks([])
+    change_oa_ax.set_yticklabels([])
+    ax.set_yticks([])
+    ax.set_yticklabels([])
+
+    oa_ax.spines["left"].set_visible(False)
+    oa_ax.spines["right"].set_visible(False)
+    oa_ax.spines["top"].set_visible(False)
+    change_oa_ax.spines["left"].set_visible(False)
+    change_oa_ax.spines["right"].set_visible(False)
+    change_oa_ax.spines["top"].set_visible(False)
+    ax.spines["left"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["top"].set_visible(False)
+
+    change_oa_ax.axvline(
+        0.0, color="grey", linestyle="--", linewidth=1, zorder=0
     )
 
-    for ax, (title, case_mu), (_, case_sem) in zip(
-        axs.flat, mu_data, sem_data
+    pos_label: Final[float] = -75.0
+    pos_oa_p: Final[float] = 105.0
+    pos_change_oa_p: Final[float] = 0.215
+    pos_p: Final[float] = 3.5
+
+    zsc = stats.norm.ppf((1.0 + confidence_level) / 2.0)
+    for i, ((_, oa_row), (_, row)) in enumerate(
+        zip(oa_df.iterrows(), sjr_df.iterrows())
     ):
-        ax.set_rticks([1.0, 2.0, 3.0], labels=["1", "2", "3"])
-        ax.set_ylim(0.0, 4.0)
-        ax.set_title(
-            title + "\n",
-            weight="bold",
-            size="medium",
-            position=(0.5, 1.3),
-            horizontalalignment="center",
-            verticalalignment="center"
-        )
-        ax.plot(theta, 0.0 * theta, color="k", linestyle=":", alpha=0.75)
-        for d, e, color, lsty in zip(case_mu, case_sem, colors, linestyles):
-            ax.plot(theta, d, color=color, linestyle=lsty)
-            ax.errorbar(theta, d, yerr=e, color=color, label="_nolegend_")
-            ax.fill(theta, d, facecolor=color, alpha=0.25, label="_nolegend_")
-        ax.set_varlabels(spoke_labels)
+        if row["type"] == "data":
+            oa_ax.text(pos_label, i, "    " + row["label"], va="center")
+            oa_ax.plot(
+                oa_row["pF"], i, marker="o", color=RED, markersize=8, alpha=0.8
+            )
+            oa_ax.plot(
+                oa_row["pM"],
+                i,
+                marker="s",
+                color=BLUE,
+                markersize=8,
+                alpha=0.8
+            )
+            oa_ax.text(
+                pos_oa_p, i, f"{fmt_pval(oa_row['MminusF_p'])}", va="center"
+            )
+            change_oa_ax.errorbar(
+                oa_row["Fyear_mean"],
+                i,
+                xerr=(zsc * oa_row["Fyear_bse"]),
+                fmt="o",
+                color=RED,
+                label="Female",
+                capsize=3,
+                markersize=8,
+                linewidth=1.5,
+                alpha=0.8
+            )
+            change_oa_ax.errorbar(
+                oa_row["Myear_mean"],
+                i,
+                xerr=(zsc * oa_row["Myear_bse"]),
+                fmt="s",
+                color=BLUE,
+                label="Male",
+                capsize=3,
+                markersize=8,
+                linewidth=1.5,
+                alpha=0.8
+            )
+            change_oa_ax.text(
+                pos_change_oa_p,
+                i,
+                f"{fmt_pval(oa_row['interaction_p'])}",
+                va="center"
+            )
+            ax.errorbar(
+                row["f_est"],
+                i,
+                xerr=(row["f_upper"] - row["f_est"]),
+                fmt="o",
+                color=RED,
+                label="Female",
+                capsize=3,
+                markersize=8,
+                linewidth=1.5,
+                alpha=0.8
+            )
+            ax.errorbar(
+                row["m_est"],
+                i,
+                xerr=(row["m_upper"] - row["m_est"]),
+                fmt="s",
+                color=BLUE,
+                label="Male",
+                capsize=3,
+                markersize=8,
+                linewidth=1.5,
+                alpha=0.8
+            )
+            ax.text(
+                pos_p, i, f"{fmt_pval(row['journal_sjr_p'])}", va="center"
+            )
+        elif row["type"] == "header_main":
+            change_oa_ax.text(
+                -0.02,
+                i,
+                "Decreasing",
+                fontweight="bold",
+                ha="right",
+                va="center"
+            )
+            change_oa_ax.text(
+                0.02,
+                i,
+                "Increasing",
+                fontweight="bold",
+                ha="left",
+                va="center"
+            )
+            change_oa_ax.text(
+                pos_change_oa_p,
+                i,
+                "p-value",
+                fontsize=10,
+                fontweight="bold",
+                va="center"
+            )
+            oa_ax.text(
+                pos_label,
+                i,
+                row["label"],
+                fontsize=10,
+                fontweight="bold",
+                va="center"
+            )
+            oa_ax.text(
+                pos_oa_p,
+                i,
+                "p-value",
+                fontsize=10,
+                fontweight="bold",
+                va="center"
+            )
+            ax.text(
+                pos_p,
+                i,
+                "p-value",
+                fontsize=10,
+                fontweight="bold",
+                va="center"
+            )
+        else:
+            raise NotImplementedError
+
+    oa_ax.set_xlabel(
+        "% Manscripts Published in OA Journals",
+        fontsize=10,
+        fontweight="bold"
+    )
+    change_oa_ax.set_xlabel(
+        "Change in OA Log Odds Per Year",
+        fontsize=10,
+        fontweight="bold"
+    )
+    ax.set_xlabel(
+        "SCImago Journal Rank (SJR)",
+        fontsize=10,
+        fontweight="bold"
+    )
 
     if savedir is not None:
         plt.savefig(
-            os.path.join(str(savedir), "journal_sjr.pdf"),
+            os.path.join(str(savedir), "fig5.pdf"),
             transparent=True,
             dpi=600,
             bbox_inches="tight"
@@ -90,115 +259,137 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
     plt.close()
 
 
+def get_open_access_data(
+    datadir: Union[Path, str] = "Medicine Authorship"
+) -> pd.DataFrame:
+    data = []
+    for strat in ["First Author", "Last Author"]:
+        data.append({"type": "header_main", "label": strat + " Gender"})
+        raw_data = get_raw_open_access_data(strat, datadir=datadir)
+        for bs in BROAD_SUBJECTS.keys():
+            subset = raw_data[raw_data["label"] == bs]
+            model = smf.glm(
+                formula="journal_is_open_access ~ year * gender",
+                data=subset,
+                family=sm.families.Binomial()
+            )
+            model = model.fit()
+
+            mu_M = model.params["year"] + model.params["year:gender[T.male]"]
+            cov = model.cov_params()
+            se_M = np.sqrt(
+                cov.loc["year", "year"] + (
+                    cov.loc["year:gender[T.male]", "year:gender[T.male]"] + (
+                        2 * cov.loc["year", "year:gender[T.male]"]
+                    )
+                )
+            )
+            z_M = mu_M / se_M
+
+            margins = model.get_margeff(
+                at="overall", method="dydx", dummy=True, atexog=None
+            )
+            mfx_summary = margins.summary_frame()
+
+            data.append({
+                "type": "data",
+                "label": bs,
+                "strat": strat,
+                "pF": 100.0 * np.mean(
+                    subset.loc[
+                        subset.gender == "female", "journal_is_open_access"
+                    ]
+                ),
+                "pM": 100.0 * np.mean(
+                    subset.loc[
+                        subset.gender == "male", "journal_is_open_access"
+                    ]
+                ),
+                "MminusF_mean": mfx_summary.loc["gender[T.male]", "dy/dx"],
+                "MminusF_bse": mfx_summary.loc["gender[T.male]", "Std. Err."],
+                "MminusF_z": mfx_summary.loc["gender[T.male]", "z"],
+                "MminusF_p": mfx_summary.loc["gender[T.male]", "Pr(>|z|)"],
+                "Fyear_mean": model.params["year"],
+                "Fyear_bse": model.bse["year"],
+                "Fyear_z": model.params["year"] / model.bse["year"],
+                "Fyear_p": model.pvalues["year"],
+                "Myear_mean": mu_M,
+                "Myear_bse": se_M,
+                "Myear_z": z_M,
+                "Myear_p": 2.0 * (1.0 - stats.norm.cdf(abs(z_M))),
+                "interaction_p": model.pvalues["year:gender[T.male]"]
+            })
+    return pd.DataFrame(data)
+
+
+def get_raw_open_access_data(
+    category: str, datadir: Union[Path, str] = "Medicine Authorship"
+) -> pd.DataFrame:
+    sub_datadir = os.path.join(str(datadir), category)
+    cols: Final[List[str]] = ["gender", "year", "journal_is_open_access"]
+    dfs = []
+    for bs, fn in BROAD_SUBJECTS.items():
+        df = pd.read_parquet(os.path.join(sub_datadir, fn))
+        df = df[cols]
+        df = df[df.gender.isin(["male", "female"])]
+        df["journal_is_open_access"] = df["journal_is_open_access"] == "Yes"
+        df["journal_is_open_access"] = df["journal_is_open_access"].astype(int)
+        df["year"] = df["year"] - df["year"].mean()
+        df["label"] = bs
+        dfs.append(df)
+    return pd.concat(dfs)
+
+
 def get_sjr_data(
-    datadir: Union[Path, str] = "Medicine Authorship"
-) -> Tuple[List[Any], List[Any]]:
-    mu: List[Any] = [list(BROAD_SUBJECTS.keys())]
-    sem: List[Any] = [list(BROAD_SUBJECTS.keys())]
-
-    for category in ["First Author", "Last Author"]:
-        female_mu: List[float] = []
-        female_sem: List[float] = []
-        male_mu: List[float] = []
-        male_sem: List[float] = []
-        sub_datadir = os.path.join(str(datadir), category)
-        for bs in mu[0]:
-            df = pd.read_parquet(os.path.join(sub_datadir, BROAD_SUBJECTS[bs]))
-
-            m_df = df[df.gender == "male"]
-            np_m_sjr = m_df.journal_sjr.to_numpy().astype(float)
-            np_m_sjr = np_m_sjr[~np.isnan(np_m_sjr)]
-            male_mu.append(np_m_sjr.mean())
-            male_sem.append(np.std(np_m_sjr, ddof=1) / np.sqrt(np_m_sjr.size))
-
-            f_df = df[df.gender == "female"]
-            np_f_sjr = f_df.journal_sjr.to_numpy().astype(float)
-            np_f_sjr = np_f_sjr[~np.isnan(np_f_sjr)]
-            female_mu.append(np_f_sjr.mean())
-            female_sem.append(
-                np.std(np_f_sjr, ddof=1) / np.sqrt(np_f_sjr.size)
+    datadir: Union[Path, str] = "Medicine Authorship",
+    confidence_level: float = 0.99
+) -> pd.DataFrame:
+    data: List[Dict[str, Any]] = []
+    for strat in ["First Author", "Last Author"]:
+        data.append({"type": "header_main", "label": strat + " Gender"})
+        raw_data = get_raw_sjr_data(strat, datadir=datadir)
+        for bs in BROAD_SUBJECTS.keys():
+            subset = raw_data[raw_data["label"] == bs]
+            m_y = subset[subset["gender"] == "male"].journal_sjr
+            f_y = subset[subset["gender"] == "female"].journal_sjr
+            m_vt = stats.t.ppf(
+                1.0 - ((1.0 - confidence_level) / 2), len(m_y) - 1
             )
-            stat_test = stats.ttest_ind(np_m_sjr, np_f_sjr, equal_var=False)
-            print(
-                f"{bs} {category}: Male SJR = {male_mu[-1]} +/- {male_sem[-1]}"
-                f" | Female SJR = {female_mu[-1]} +/- {female_sem[-1]}"
-                f" | Unpaired t-test: {stat_test}"
+            f_vt = stats.t.ppf(
+                1.0 - ((1.0 - confidence_level) / 2), len(f_y) - 1
             )
+            m_sem = m_y.std(ddof=1) / np.sqrt(len(m_y))
+            f_sem = f_y.std(ddof=1) / np.sqrt(len(f_y))
+            data.append({
+                "type": "data",
+                "label": bs,
+                "strat": strat,
+                "m_est": m_y.mean(),
+                "m_lower": m_y.mean() - (m_vt * m_sem),
+                "m_upper": m_y.mean() + (m_vt * m_sem),
+                "f_est": f_y.mean(),
+                "f_lower": f_y.mean() - (f_vt * f_sem),
+                "f_upper": f_y.mean() + (f_vt * f_sem),
+                "journal_sjr_p": stats.ttest_ind(m_y, f_y).pvalue
+            })
+    return pd.DataFrame(data)
 
-        mu.append((category, [male_mu, female_mu]))
-        sem.append((category, [male_sem, female_sem]))
-    return mu, sem
 
-
-def get_sjr_citation_data(
-    datadir: Union[Path, str] = "Medicine Authorship"
-) -> Tuple[List[Any], List[Any]]:
-    mu: List[Any] = [list(BROAD_SUBJECTS.keys())]
-    sem: List[Any] = [list(BROAD_SUBJECTS.keys())]
-    eps = float(np.finfo(np.float32).eps)
-
-    for category in ["First Author", "Last Author"]:
-        female_mu: List[float] = []
-        female_sem: List[float] = []
-        male_mu: List[float] = []
-        male_sem: List[float] = []
-        sub_datadir = os.path.join(str(datadir), category)
-        for bs in mu[0]:
-            df = pd.read_parquet(os.path.join(sub_datadir, BROAD_SUBJECTS[bs]))
-
-            m_df = df[df.gender == "male"]
-            np_m_sjr = m_df.journal_sjr.to_numpy().astype(float)
-            np_m_sjr = np_m_sjr[~np.isnan(np_m_sjr)]
-            m_sjrs, m_citations_mu, m_citations_sem = [], [], []
-            for sjr in np.unique(np_m_sjr):
-                m_data = m_df[m_df.journal_sjr == sjr].num_total_citations
-                np_m_data = m_data.to_numpy()
-                np_m_data = np_m_data[np_m_data >= 0]
-                if np_m_data.size < 2:
-                    continue
-                m_sjrs.append(sjr)
-                m_citations_mu.append(np_m_data.mean())
-                m_citations_sem.append(
-                    np.std(np_m_data, ddof=1) / np.sqrt(np_m_data.size)
-                )
-            m_weights = 1.0 / (np.square(np.asarray(m_citations_sem)) + eps)
-            m_model = sm.WLS(
-                m_citations_mu, sm.add_constant(m_sjrs), weights=m_weights
-            )
-            m_model = m_model.fit()
-            male_mu.append(m_model.params[1])
-            male_sem.append(m_model.bse[1])
-
-            f_df = df[df.gender == "female"]
-            np_f_sjr = f_df.journal_sjr.to_numpy().astype(float)
-            np_f_sjr = np_f_sjr[~np.isnan(np_f_sjr)]
-            f_sjrs, f_citations_mu, f_citations_sem = [], [], []
-            for sjr in np.unique(np_f_sjr):
-                f_data = f_df[f_df.journal_sjr == sjr].num_total_citations
-                np_f_data = f_data.to_numpy()
-                np_f_data = np_f_data[np_f_data >= 0]
-                if np_f_data.size < 2:
-                    continue
-                f_sjrs.append(sjr)
-                f_citations_mu.append(np_f_data.mean())
-                f_citations_sem.append(
-                    np.std(np_f_data, ddof=1) / np.sqrt(np_f_data.size)
-                )
-            f_weights = 1.0 / (np.square(np.asarray(f_citations_sem)) + eps)
-            f_model = sm.WLS(
-                f_citations_mu, sm.add_constant(f_sjrs), weights=f_weights
-            )
-            f_model = f_model.fit()
-            female_mu.append(f_model.params[1])
-            female_sem.append(f_model.bse[1])
-
-            print(
-                f"{bs} {category}: Female R2 = {f_model.rsquared} | "
-                f"Male R2 = {m_model.rsquared}"
-            )
-        mu.append((category, [male_mu, female_mu]))
-        sem.append((category, [male_sem, female_sem]))
-    return mu, sem
+def get_raw_sjr_data(
+    category: str, datadir: Union[Path, str] = "Medicine Authorship"
+) -> pd.DataFrame:
+    sub_datadir = os.path.join(str(datadir), category)
+    cols: Final[List[str]] = ["gender", "year", "journal_sjr"]
+    dfs = []
+    for bs, fn in BROAD_SUBJECTS.items():
+        df = pd.read_parquet(os.path.join(sub_datadir, fn))
+        df = df[cols]
+        df = df[df.gender.isin(["male", "female"])]
+        df = df[~df.journal_sjr.isna()]
+        df["year"] = df["year"] - df["year"].mean()
+        df["label"] = bs
+        dfs.append(df)
+    return pd.concat(dfs)
 
 
 if __name__ == "__main__":
