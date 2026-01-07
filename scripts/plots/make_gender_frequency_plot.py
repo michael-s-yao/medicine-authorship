@@ -19,7 +19,7 @@ from scipy.stats import t
 from typing import Any, Dict, Final, List, Optional, Union
 
 sys.path.append(str(Path(__file__).parent.parent.parent.resolve()))
-from core.plot_utils import BROAD_SUBJECTS  # noqa
+from core.plot_utils import BROAD_SUBJECTS, fmt_pval  # noqa
 
 
 @click.command()
@@ -46,9 +46,17 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
     m_change_df = get_change_data("male", datadir=datadir)
     f_change_df = get_change_data("female", datadir=datadir)
 
+    bse_ssq = np.square(m_change_df["bse"]) + np.square(f_change_df["bse"])
+    wald_t = np.abs(m_change_df["est"] - f_change_df["est"]) / np.sqrt(bse_ssq)
+    wald_df = np.pow(m_change_df["bse"], 4) / (m_change_df["n_obs"] - 2)
+    wald_df += np.pow(f_change_df["bse"], 4) / (f_change_df["n_obs"] - 2)
+    wald_df = np.square(bse_ssq) / wald_df
+    wald_p = 2.0 * t.sf(wald_t, wald_df)
+
     pos_label: Final[float] = -100.0
     pos_nauthors: Final[float] = -50.0
-    pos_r2: Final[float] = 0.035
+    pos_r2: Final[float] = 3.5
+    pos_p: Final[float] = 6.75
     BLUE: Final[str] = "#3170AD"
     RED: Final[str] = "#90312C"
 
@@ -62,7 +70,7 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
             i - 0.55,
             i + 0.45,
             xmin=-1.05,
-            xmax=2.85,
+            xmax=3.13,
             color="gray",
             alpha=0.1,
             ec=None,
@@ -153,11 +161,12 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
                 row["est"], i, marker="s", markersize=8, color=BLUE, alpha=0.8
             )
             change_ax.text(
-                pos_r2, i, f"{row['r2']:.2f}", va="center"
+                pos_r2, i, rf"${row['r2']:.2f}$", va="center"
             )
+            change_ax.text(pos_p, i, fmt_pval(wald_p[i]), va="center")
         elif row["type"] == "header_main":
             change_ax.text(
-                -0.0025,
+                -0.25,
                 i,
                 "Decreasing Over Time",
                 fontweight="bold",
@@ -165,7 +174,7 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
                 va="center"
             )
             change_ax.text(
-                0.0025,
+                0.25,
                 i,
                 "Increasing Over Time",
                 fontweight="bold",
@@ -181,11 +190,18 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
                 va="center"
             )
             change_ax.text(
-                pos_r2 + 0.015,
+                pos_r2 + 1.5,
                 i,
                 r"$R^2$ (Female)",
                 fontweight="bold",
                 color=RED,
+                va="center"
+            )
+            change_ax.text(
+                pos_p,
+                i,
+                "p-value",
+                fontweight="bold",
                 va="center"
             )
         else:
@@ -205,7 +221,7 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
                 row["est"], i, marker="o", markersize=8, color=RED, alpha=0.8
             )
             change_ax.text(
-                pos_r2 + 0.015, i, f"{row['r2']:.2f}", va="center"
+                pos_r2 + 1.5, i, rf"${row['r2']:.2f}$", va="center"
             )
         elif row["type"] != "header_main":
             raise NotImplementedError
@@ -214,11 +230,20 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
     ticks = [0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
     ax.set_xticks(ticks)
     ax.set_xticklabels([str(int(t)) * (1 - (int(t) % 20)) for t in ticks])
-    ax.set_xlabel("Percentage of Manuscript Authors (%)", fontsize=10)
+    ax.set_xlabel(
+        "Percentage of Manuscript Authors (%)", fontsize=10, fontweight="bold"
+    )
     ax.xaxis.set_ticks_position("bottom")
-    change_ax.set_xlim(-0.03, 0.03)
+    change_ax.set_xlim(-3.0, 3.0)
+    ticks = [
+        -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0
+    ]
+    change_ax.set_xticks(ticks)
+    change_ax.set_xticklabels([str(t) * (1 - (int(2 * t) % 2)) for t in ticks])
     change_ax.set_xlabel(
-        "Rate of Change in Authorship Percentage (%/year)", fontsize=10
+        "Rate of Change in Authorship Percentage (%/year)",
+        fontsize=10,
+        fontweight="bold"
     )
 
     plt.subplots_adjust(left=0.3, right=0.85, top=0.85, bottom=0.1)
@@ -293,9 +318,15 @@ def get_change_data(
                 "type": "data",
                 "label": bs,
                 "n_authors": len(df),
-                "est": ols_model.params[1],
-                "lower": ols_model.params[1] - (t_val * ols_model.bse[1]),
-                "upper": ols_model.params[1] + (t_val * ols_model.bse[1]),
+                "est": 100.0 * ols_model.params[1],
+                "lower": 100.0 * (
+                    ols_model.params[1] - (t_val * ols_model.bse[1])
+                ),
+                "upper": 100.0 * (
+                    ols_model.params[1] + (t_val * ols_model.bse[1])
+                ),
+                "bse": 100.0 * ols_model.bse[1],
+                "n_obs": len(years),
                 "r2": ols_model.rsquared
             })
     return pd.DataFrame(data)

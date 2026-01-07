@@ -38,16 +38,22 @@ from core.plot_utils import BROAD_SUBJECTS, fmt_pval  # noqa
     show_default=True,
     help="Optional figure savepath."
 )
-def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
-    """Make plots for paper citation data."""
+def main(
+    datadir: Union[Path, str],
+    savedir: Optional[Union[Path, str]],
+    include_legend: bool = False,
+    include_self_references: bool = False
+):
+    """Make plots for paper citation and reference data."""
     plt.rcParams["font.family"] = ["Arial"]
     strats: Final[List[str]] = ["First Author", "Last Author"]
-    metric2title: Final[Dict[str, str]] = {
+    metric2title: Dict[str, str] = {
         "total_citations": "Total Citations",
         "self_citations": "Self Citations",
         "total_references": "Total References",
-        "self_references": "Self References"
     }
+    if include_self_references:
+        metric2title["self_references"] = "Self References"
     fig, axes = plt.subplots(
         len(strats), len(metric2title.keys()), figsize=(16, 12)
     )
@@ -65,7 +71,7 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
         else:
             axes[i].tick_params(axis="y", length=0, pad=90)
             axes[i].text(
-                -0.65,
+                -0.65 + (0.18 * (not include_self_references)),
                 1.03,
                 strats[int(i / len(metric2title.keys()))] + " Gender",
                 fontweight="bold",
@@ -81,8 +87,8 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
                 axes[i].axhspan(
                     j - 0.5,
                     j + 0.5,
-                    xmin=-0.68,
-                    xmax=6.9,
+                    xmin=-0.68 + (0.18 * (not include_self_references)),
+                    xmax=(6.9 - (2.55 * (not include_self_references))),
                     color="gray",
                     alpha=0.1,
                     ec=None,
@@ -90,18 +96,19 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
                 )
 
     handles, labels = axes[0].get_legend_handles_labels()
-    axes[-1].legend(
-        handles,
-        labels,
-        loc="center left",
-        bbox_to_anchor=(1.55, 1.1),
-        fontsize=11
-    )
-    plt.subplots_adjust(wspace=0.8)
+    if include_legend:
+        axes[-1].legend(
+            handles,
+            labels,
+            loc="center left",
+            bbox_to_anchor=(1.55, 1.1),
+            fontsize=11
+        )
+    plt.subplots_adjust(wspace=0.8 - (0.3 * (not include_self_references)))
 
     if savedir is not None:
         plt.savefig(
-            os.path.join(str(savedir), "fig3.pdf"),
+            os.path.join(str(savedir), "fig4.pdf"),
             transparent=True,
             dpi=600,
             bbox_inches="tight"

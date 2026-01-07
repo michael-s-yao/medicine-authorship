@@ -115,11 +115,11 @@ def main(
         )
 
         out = df.groupby("doi").agg(
-            fraq_male=("gender", lambda s: (s == "male").mean()),
-            fraq_female=("gender", lambda s: (s == "female").mean()),
+            frac_male=("gender", lambda s: (s == "male").mean()),
+            frac_female=("gender", lambda s: (s == "female").mean()),
             num_total_authors=("gender", "size")
         )
-        cols = ["fraq_female", "fraq_male", "num_total_authors"]
+        cols = ["frac_female", "frac_male", "num_total_authors"]
         cols.extend(final_cols[1:])
         out = pd.merge(
             df.drop_duplicates(subset=["doi"]), out, on="doi", how="right"

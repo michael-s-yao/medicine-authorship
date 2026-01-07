@@ -21,7 +21,7 @@ BROAD_SUBJECTS: Final[Dict[str, str]] = {
     "Geriatrics": "geriatrics.parquet",
     "Infectious Disease": "infectiousdisease.parquet",
     "Nephrology": "nephrology.parquet",
-    "Oncolocy": "oncology.parquet",
+    "Oncology": "oncology.parquet",
     "Primary Care": "primarycare.parquet",
     "Pulmonology": "pulmonology.parquet",
     "Rheumatology": "rheumatology.parquet"

@@ -232,7 +232,7 @@ def main(
             raise NotImplementedError
 
     oa_ax.set_xlabel(
-        "% Manscripts Published in OA Journals",
+        "% Manuscripts Published in OA Journals",
         fontsize=10,
         fontweight="bold"
     )
