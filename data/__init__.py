@@ -20,6 +20,12 @@ from .article import (
     main as article_main,
     ARTICLE_SAVEPATH
 )
+from .benchmark import (
+    BenchmarkDataset,
+    SSABenchmarkDataset,
+    PinyinBenchmarkDataset,
+    GlobalBenchmarkDataset
+)
 
 
 __all__ = [
@@ -32,7 +38,11 @@ __all__ = [
     "Journal",
     "Author",
     "Award",
-    "Article"
+    "Article",
+    "BenchmarkDataset",
+    "SSABenchmarkDataset",
+    "PinyinBenchmarkDataset",
+    "GlobalBenchmarkDataset"
 ]
 
 
