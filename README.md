@@ -3,19 +3,34 @@
 [![LICENSE](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE.md)
 [![CONTACT](https://img.shields.io/badge/contact-michael.yao%40pennmedicine.upenn.edu-blue)](mailto:michael.yao@pennmedicine.upenn.edu)
 
-The purpose of this research is to assess gender-based differences in authorship trends, research impact, and scholarly output in medical research using LLMs. This retrospective study evaluated manuscripts published between January 2015 and September 2025 across 184 PubMed-indexed radiology journals. Over 1 million manuscripts comprising over 10 million authors were analyzed. Author gender was annotated using a scalable LLM-based pipeline compatible with consumer grade hardware. We queried an LLM to generate multiple independent gender predictions per author, with majority agreement used to define the final classification. We found that the proportion of female authors generally increased over time. Our results demonstrate a scalable, automated method to track bibliometric trends in academic research, highlighting both progress and persistent gender inequaities in the authorship of medical literature.
+Gender disparities in academic medicine have been previously reported, but prior bibliometric studies have been limited by small sample sizes and reliance on manual gender annotation methods. These bottlenecks constrain previous analyses to only a small subset of clinical literature. To assess gender-based differences in authorship trends, research impact, and scholarly output over time in clinical research at scale, we hypothesized that large language models (LLMs) can be an effective tool to facilitate systematic bibliometric analysis of academic research trends. We conducted a retrospective, cross-sectional bibliometric study evaluating manuscripts published between January 2015 and September 2025 across over 1,000 PubMed-indexed academic medical journals. Over 1 million manuscripts, written by more than 10 million authors across 13 medical specialties, were analyzed. To enable this large-scale study, the genders of manuscript authors were annotated using a scalable LLM-based pipeline compatible with consumer-grade hardware.
 
-## Installation
+As a part of this project, we have created the `namecast` package, which provides a standardized API to make gender predictions from both LLMs and conventional database-based methods.
 
-To install and run our code, first clone the `radiology-authorship` repository.
+## Installation and Usage
+
+If you are interested in using the `namecast` package, all you need to do is install it using `pip`:
 
 ```
-$ cd ~
-$ git clone https://github.com/michael-s-yao/medicine-authorship
-$ cd medicine-authorship
+python -m pip install namecast
 ```
 
-To maximize reproducibility of our work, we have provided a Dockerfile that specifies the expected compute environment. You can first build an image and then run a corresponding container using:
+To see what gender prediction methods are natively available with `namecast`, you can run
+
+```python
+import namecast
+print(namecast.list_registered_methods())
+```
+
+You can choose any of the listed gender prediction methods to instantiate a gender prediction engine, which can then be used for generating gender predictions:
+
+```python
+engine = namecast.make("meta-llama/Llama-3.1-8B")
+assert "female" == engine.predict("Alice")  # Predicts the gender of a single name.
+assert ["female", "male"] == engine.predict_batch(["Alice", "Bob"])  # Predicts the gender of a batch of names.
+```
+
+If you are interested in reproducing our research based on the `namecast` package, we have provided a Dockerfile that specifies the expected compute environment. You can first build an image and then run a corresponding container using:
 
 ```
 docker build -t medicine-authorship:latest .
@@ -40,10 +55,12 @@ Questions and comments are welcome. Suggestions can be submitted through Github 
 
 If you found our work helpful for your research, please consider citing our paper:
 
-    @misc{yaoms2025radanalysis,
-      title={Large language model-based evaluation of the impact of gender in radiological research},
+    @misc{yaoms2026medanalysis,
+      title={Large language model-based evaluation of the impact of gender in medical research},
       author={Yao, Michael S},
-      year={2025}
+      year={2026},
+      doi={10.64898/2026.01.06.26343564},
+      url={https://www.medrxiv.org/node/1135425.full}
     }
 
 ## License
