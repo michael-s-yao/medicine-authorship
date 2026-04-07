@@ -10,20 +10,16 @@ Licensed under the MIT License. Copyright University of Pennsylvania 2025.
 import argparse
 import json
 import os
-import sys
 from pathlib import Path
 from tqdm import tqdm
 from typing import List, Optional, Union
 
 import namecast
 
-sys.path.append(".")
-import data as benchmark_module  # noqa
-
 
 def main(
     save_fn: Union[Path, str],
-    first_names: Union[benchmark_module.BenchmarkDataset, List[List[str]]],
+    first_names: Union[namecast.benchmarks.BenchmarkDataset, List[List[str]]],
     model_id: str,
     ckpt_frequency: int
 ) -> int:
@@ -49,7 +45,7 @@ def main(
         num_already_completed = len(labels)
 
     for i in tqdm(range(num_already_completed, len(first_names))):
-        if isinstance(first_names, benchmark_module.BenchmarkDataset):
+        if isinstance(first_names, namecast.benchmarks.BenchmarkDataset):
             names = [first_names[i][0]]
         else:
             names = first_names[i]
@@ -120,7 +116,7 @@ if __name__ == "__main__":
     if args.savedir:
         os.makedirs(args.savedir, exist_ok=True)
 
-    benchmark: Optional[benchmark_module.BenchmarkDataset] = None
+    benchmark: Optional[namecast.benchmarks.BenchmarkDataset] = None
     run_idx = "" if args.idx < 0 else str(args.idx)
     suffix = args.method.split("/")[-1]
     if args.benchmark is not None:
@@ -129,7 +125,7 @@ if __name__ == "__main__":
                 args.savedir,
                 f"genders_{args.benchmark}_{run_idx}_{suffix}.json"
             ),
-            getattr(benchmark_module, args.benchmark)(),
+            getattr(namecast.benchmarks, args.benchmark)(),
             args.method,
             args.ckpt_frequency
         )

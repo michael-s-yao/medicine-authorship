@@ -12,15 +12,16 @@ from typing import Any, Dict, List
 from .registry import Registry
 from .namecast import NameCast
 from .spec import Gender
-from . import llm, database
+from . import llm, database, benchmarks
 
 
 __all__ = [
     "register",
     "make",
     "list_registered_methods",
-    "database",
     "llm",
+    "database",
+    "benchmarks",
     "NameCast",
     "Gender"
 ]
@@ -111,6 +112,14 @@ register(
 register(
     id_="damegender",
     model="namecast.database:DameGender",
+    entry_point="predict_gender",
+    init_kwargs={}
+)
+
+
+register(
+    id_="genderit",
+    model="namecast.database:Genderit",
     entry_point="predict_gender",
     init_kwargs={}
 )
