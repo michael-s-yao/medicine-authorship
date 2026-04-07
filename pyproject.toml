@@ -42,7 +42,8 @@ dependencies = [
   "umap-learn",
   "thefuzz",
   "statsmodels",
-  "gender_extractor"
+  "gender_extractor",
+  "unidecode"
 ]
 
 [project.urls]
