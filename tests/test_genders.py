@@ -10,7 +10,7 @@ Licensed under the MIT License. Copyright University of Pennsylvania 2026.
 import pytest
 from typing import Dict, Final
 
-import namecast
+import gendercast
 
 
 test_cases: Final[Dict[str, str]] = {
@@ -22,23 +22,23 @@ test_cases: Final[Dict[str, str]] = {
 }
 
 
-@pytest.fixture(params=namecast.list_registered_methods())
-def model(request: pytest.FixtureRequest) -> namecast.NameCast:
+@pytest.fixture(params=gendercast.list_registered_methods())
+def model(request: pytest.FixtureRequest) -> gendercast.GenderCast:
     """
-    Instantiates a `namecast` gender prediction method.
+    Instantiates a `gendercast` gender prediction method.
     Input:
         request: a `pytest` FixtureRequest object.
     Returns:
-        The specified `namecast` gender prediction method.
+        The specified `gendercast` gender prediction method.
     """
-    return namecast.make(request.param)
+    return gendercast.make(request.param)
 
 
-def test_predict_returns_valid_gender(model: namecast.NameCast) -> None:
+def test_predict_returns_valid_gender(model: gendercast.GenderCast) -> None:
     """
-    Tests the `namecast` gender prediction method.
+    Tests the `gendercast` gender prediction method.
     Input:
-        model: the instantiated `namecast` prediction model.
+        model: the instantiated `gendercast` prediction model.
     Returns:
         None.
     """
@@ -46,11 +46,13 @@ def test_predict_returns_valid_gender(model: namecast.NameCast) -> None:
         assert model.predict(name) == gender, name
 
 
-def test_predict_batch_returns_valid_genders(model: namecast.NameCast) -> None:
+def test_predict_batch_returns_valid_genders(
+    model: gendercast.GenderCast
+) -> None:
     """
-    Tests the batched `namecast` gender prediction method.
+    Tests the batched `gendercast` gender prediction method.
     Input:
-        model: the instantiated `namecast` prediction model.
+        model: the instantiated `gendercast` prediction model.
     Returns:
         None.
     """

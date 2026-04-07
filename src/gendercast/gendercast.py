@@ -22,11 +22,11 @@ from unidecode import unidecode
 from .spec import Gender, ModelSpec
 
 
-class NameCast:
+class GenderCast:
     def __init__(self, model_spec: ModelSpec, **kwargs: Dict[str, Any]):
         """
         Args:
-            model_spec: the NameCast model specification.
+            model_spec: the GenderCast model specification.
         """
         self._model_spec: Final[ModelSpec] = model_spec
         self._kwargs: Final[Dict[str, Any]] = kwargs

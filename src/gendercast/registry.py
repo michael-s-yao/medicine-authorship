@@ -9,7 +9,7 @@ Licensed under the MIT License. Copyright University of Pennsylvania 2026.
 """
 from typing import Any, Dict, List
 
-from .namecast import NameCast
+from .gendercast import GenderCast
 from .spec import ModelSpec
 
 
@@ -66,13 +66,13 @@ class Registry:
         """
         return list(self._specs.keys())
 
-    def make(self, id_: str, **calltime_kwargs: Dict[str, Any]) -> NameCast:
+    def make(self, id_: str, **calltime_kwargs: Dict[str, Any]) -> GenderCast:
         """
         Instantiates a specified gender prediction method.
         Input:
             id_: the unique ID of the gender prediction method to instantiate.
         Returns:
-            The specified NameCast gender prediction object.
+            The specified GenderCast gender prediction object.
         """
         if id_ not in self._specs:
             raise ValueError(
@@ -81,4 +81,4 @@ class Registry:
             )
         spec = self._specs[id_]
         merged_kwargs = {**spec.kwargs, **calltime_kwargs}
-        return NameCast(spec, **merged_kwargs)
+        return GenderCast(spec, **merged_kwargs)

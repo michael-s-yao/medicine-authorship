@@ -5,32 +5,32 @@
 
 Gender disparities in academic medicine have been previously reported, but prior bibliometric studies have been limited by small sample sizes and reliance on manual gender annotation methods. These bottlenecks constrain previous analyses to only a small subset of clinical literature. To assess gender-based differences in authorship trends, research impact, and scholarly output over time in clinical research at scale, we hypothesized that large language models (LLMs) can be an effective tool to facilitate systematic bibliometric analysis of academic research trends. We conducted a retrospective, cross-sectional bibliometric study evaluating manuscripts published between January 2015 and September 2025 across over 1,000 PubMed-indexed academic medical journals. Over 1 million manuscripts, written by more than 10 million authors across 13 medical specialties, were analyzed. To enable this large-scale study, the genders of manuscript authors were annotated using a scalable LLM-based pipeline compatible with consumer-grade hardware.
 
-As a part of this project, we have created the `namecast` package, which provides a standardized API to make gender predictions from both LLMs and conventional database-based methods.
+As a part of this project, we have created the `gendercast` package, which provides a standardized API to make gender predictions from both LLMs and conventional database-based methods.
 
 ## Installation and Usage
 
-If you are interested in using the `namecast` package, all you need to do is install it using `pip`:
+If you are interested in using the `gendercast` package, all you need to do is install it using `pip`:
 
 ```
-python -m pip install namecast
+python -m pip install gendercast
 ```
 
-To see what gender prediction methods are natively available with `namecast`, you can run
+To see what gender prediction methods are natively available with `gendercast`, you can run
 
 ```python
-import namecast
-print(namecast.list_registered_methods())
+import gendercast
+print(gendercast.list_registered_methods())
 ```
 
 You can choose any of the listed gender prediction methods to instantiate a gender prediction engine, which can then be used for generating gender predictions:
 
 ```python
-engine = namecast.make("meta-llama/Llama-3.1-8B")
+engine = gendercast.make("meta-llama/Llama-3.1-8B")
 assert "female" == engine.predict("Alice")  # Predicts the gender of a single name.
 assert ["female", "male"] == engine.predict_batch(["Alice", "Bob"])  # Predicts the gender of a batch of names.
 ```
 
-If you are interested in reproducing our research based on the `namecast` package, we have provided a Dockerfile that specifies the expected compute environment. You can first build an image and then run a corresponding container using:
+If you are interested in reproducing our research based on the `gendercast` package, we have provided a Dockerfile that specifies the expected compute environment. You can first build an image and then run a corresponding container using:
 
 ```
 docker build -t medicine-authorship:latest .

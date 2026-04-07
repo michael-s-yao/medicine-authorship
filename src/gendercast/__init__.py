@@ -10,7 +10,7 @@ Licensed under the MIT License. Copyright University of Pennsylvania 2026.
 from typing import Any, Dict, List
 
 from .registry import Registry
-from .namecast import NameCast
+from .gendercast import GenderCast
 from .spec import Gender
 from . import llm, database, benchmarks
 
@@ -22,7 +22,7 @@ __all__ = [
     "llm",
     "database",
     "benchmarks",
-    "NameCast",
+    "GenderCast",
     "Gender"
 ]
 
@@ -66,20 +66,20 @@ def list_registered_methods() -> List[str]:
     return __registry.registered_methods
 
 
-def make(id_: str, **kwargs: Dict[str, Any]) -> NameCast:
+def make(id_: str, **kwargs: Dict[str, Any]) -> GenderCast:
     """
     Instantiates a specified gender prediction method.
     Input:
         id_: the unique ID of the gender prediction method to instantiate.
     Returns:
-        The specified NameCast gender prediction object.
+        The specified GenderCast gender prediction object.
     """
     return __registry.make(id_, **kwargs)
 
 
 register(
     id_="genderizer3",
-    model="namecast.database:Genderizer3",
+    model="gendercast.database:Genderizer3",
     entry_point="predict_gender",
     init_kwargs={}
 )
@@ -111,7 +111,7 @@ register(
 
 register(
     id_="damegender",
-    model="namecast.database:DameGender",
+    model="gendercast.database:DameGender",
     entry_point="predict_gender",
     init_kwargs={}
 )
@@ -119,7 +119,7 @@ register(
 
 register(
     id_="genderit",
-    model="namecast.database:Genderit",
+    model="gendercast.database:Genderit",
     entry_point="predict_gender",
     init_kwargs={}
 )
@@ -127,7 +127,7 @@ register(
 
 register(
     id_="meta-llama/Llama-3.1-8B",
-    model="namecast.llm:HFModelPredictor",
+    model="gendercast.llm:HFModelPredictor",
     entry_point="predict_gender",
     init_kwargs={"hf_model": "meta-llama/Llama-3.1-8B"}
 )
@@ -135,7 +135,7 @@ register(
 
 register(
     id_="openai/gpt-oss-20b",
-    model="namecast.llm:GPTOSSModelPredictor",
+    model="gendercast.llm:GPTOSSModelPredictor",
     entry_point="predict_gender",
     init_kwargs={"model_id": "openai/gpt-oss-20b"}
 )
@@ -143,7 +143,7 @@ register(
 
 register(
     id_="openai/gpt-oss-120b",
-    model="namecast.llm:GPTOSSModelPredictor",
+    model="gendercast.llm:GPTOSSModelPredictor",
     entry_point="predict_gender",
     init_kwargs={"model_id": "openai/gpt-oss-120b"}
 )
