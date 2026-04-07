@@ -53,7 +53,11 @@ class BenchmarkDataset(Dataset, abc.ABC):
             The specified name-gender-country tuple.
         """
         data = self._data.iloc[idx].to_dict()
-        return data["name"].title(), data["gender"], data["country"]
+        return (
+            str(data["name"]).title(),
+            str(data["gender"]),
+            str(data["country"])
+        )
 
 
 class SSABenchmarkDataset(BenchmarkDataset):
