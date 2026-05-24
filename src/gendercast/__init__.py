@@ -147,3 +147,10 @@ register(
     entry_point="predict_gender",
     init_kwargs={"model_id": "openai/gpt-oss-120b"}
 )
+
+register(
+    id_="qwen/qwen3.6-27b",
+    model="gendercast.llm:Qwen3ModelPredictor",
+    entry_point="predict_gender",
+    init_kwargs={}
+)

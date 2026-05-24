@@ -70,7 +70,7 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
             i - 0.55,
             i + 0.45,
             xmin=-1.05,
-            xmax=3.13,
+            xmax=3.37,
             color="gray",
             alpha=0.1,
             ec=None,
@@ -91,6 +91,26 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
 
     ax.axvline(50.0, color="grey", linestyle="--", linewidth=1, zorder=0)
     change_ax.axvline(0.0, color="grey", linestyle="--", linewidth=1, zorder=0)
+
+    cohen_h = []
+    for (_, m), (_, f) in zip(m_df.iterrows(), f_df.iterrows()):
+        pm, pf = m["est"] / 100.0, f["est"] / 100.0
+        cohen_h.append(
+            2.0 * (np.arcsin(np.sqrt(pm)) - np.arcsin(np.sqrt(pf))).item()
+        )
+    h_pos: Final[float] = 85.0
+
+    cohen_d = []
+    for (_, m), (_, f) in zip(m_change_df.iterrows(), f_change_df.iterrows()):
+        ss_xx_m = m["n_obs"] * (m["n_obs"] ** 2 - 1) / 12.0
+        ss_xx_f = f["n_obs"] * (f["n_obs"] ** 2 - 1) / 12.0
+        msd = m["bse"] * np.sqrt(ss_xx_m)
+        fsd = f["bse"] * np.sqrt(ss_xx_f)
+        sd_pooled = ((m["n_obs"] - 2) * msd * msd)
+        sd_pooled += ((f["n_obs"] - 2) * fsd * fsd)
+        sd_pooled = np.sqrt(sd_pooled / (m["n_obs"] + f["n_obs"] - 4))
+        cohen_d.append(((f["est"] - m["est"]) / sd_pooled).item())
+    d_pos: Final[float] = 9.0
 
     for i, (_, row) in enumerate(m_df.iterrows()):
         if row["type"] == "data":
@@ -136,6 +156,7 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
                 ha="left",
                 va="center"
             )
+            ax.text(h_pos, i, r"$h$", fontweight="bold", va="center")
         else:
             raise NotImplementedError
 
@@ -144,6 +165,7 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
             ax.plot(
                 row["est"], i, marker="o", markersize=8, color=RED, alpha=0.8
             )
+            ax.text(h_pos, i, fmt_pval(cohen_h[i]), va="center")
         elif row["type"] != "header_main":
             raise NotImplementedError
 
@@ -204,6 +226,7 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
                 fontweight="bold",
                 va="center"
             )
+            change_ax.text(d_pos, i, r"$d$", fontweight="bold", va="center")
         else:
             raise NotImplementedError
 
@@ -223,6 +246,7 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
             change_ax.text(
                 pos_r2 + 1.5, i, rf"${row['r2']:.2f}$", va="center"
             )
+            change_ax.text(d_pos, i, fmt_pval(cohen_d[i]), va="center")
         elif row["type"] != "header_main":
             raise NotImplementedError
 

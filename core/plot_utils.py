@@ -30,7 +30,9 @@ BROAD_SUBJECTS: Final[Dict[str, str]] = {
 
 def fmt_pval(x: float) -> str:
     if x >= 1 or x < 0:
-        raise ValueError
+        if x < 0 or (x >= 1 and x < 10):
+            return rf"${x:.2f}$"
+        return rf"${x:.1f}$"
     if x == 0:
         return r"$0.0$"
     if x >= 0.01:
