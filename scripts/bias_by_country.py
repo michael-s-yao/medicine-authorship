@@ -21,7 +21,8 @@ GENDER_LABELS: Final[List[str]] = ["male", "female", "unknown"]
 def evaluate_by_country(
     answer_key_fn: Union[Path, str],
     predictions_fn: Union[Path, str],
-    prediction_col: str
+    prediction_col: str,
+    factor: float = 100.0
 ) -> pd.DataFrame:
     """
     Computes gender-prediction performance metrics by country of origin.
@@ -29,6 +30,7 @@ def evaluate_by_country(
         answer_key_fn: the path to the DataFrame with the answer key genders.
         predictions_fn: the path to the DataFrame with the predicted genders.
         prediction_col: the column in the DataFrame with the predicted genders.
+        factor: multiplication factor for metrics.
     Returns:
         A DataFrame of the performance metrics.
     """
@@ -57,20 +59,20 @@ def evaluate_by_country(
             y_true, y_pred, labels=GENDER_LABELS, zero_division=0
         )
 
-        metrics = {"n": len(group), "accuracy": accuracy}
+        metrics = {"n": len(group), "accuracy": accuracy * factor}
         for label, p, r, f, s in zip(
             GENDER_LABELS, precision, recall, f1, support
         ):
-            metrics[f"{label}_precision"] = p
-            metrics[f"{label}_recall"] = r
-            metrics[f"{label}_f1"] = f
-            metrics[f"{label}_support"] = s
+            metrics[f"{label}_precision"] = p * factor
+            metrics[f"{label}_recall"] = r * factor
+            metrics[f"{label}_f1"] = f * factor
+            metrics[f"{label}_support"] = s * factor
 
         present_idx = [i for i, s in enumerate(support) if s > 0]
         if present_idx:
-            metrics["macro_precision"] = precision[present_idx].mean()
-            metrics["macro_recall"] = recall[present_idx].mean()
-            metrics["macro_f1"] = f1[present_idx].mean()
+            metrics["macro_precision"] = precision[present_idx].mean() * factor
+            metrics["macro_recall"] = recall[present_idx].mean() * factor
+            metrics["macro_f1"] = f1[present_idx].mean() * factor
         else:
             metrics["macro_precision"] = float("nan")
             metrics["macro_recall"] = float("nan")
@@ -129,7 +131,7 @@ def main():
     results_df = evaluate_by_country(
         args.answer_key.resolve(), args.prediction.resolve(), args.column_name
     )
-    results_df.to_csv(str(args.output), index=False)
+    results_df.to_csv(str(args.output))
 
 
 if __name__ == "__main__":
