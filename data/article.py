@@ -12,10 +12,12 @@ import os
 import time
 from pathlib import Path
 from statistics import mode
+from tqdm import tqdm
 from typing import Any, Dict, Final, List, NamedTuple, Optional, Tuple, Union
 
 from .entrez import search_entrez, fetch_entrez, save_nlm_query
 from .journal import Journal, JOURNAL_SAVEPATH
+from .mesh_age import get_age_groups
 
 
 logger = logging.getLogger(__name__)
@@ -77,6 +79,8 @@ class Article(NamedTuple):
     journal: Journal
     year: int
     doi: Optional[str]
+    pmid: Optional[str] = None
+    age_group: Optional[str] = None
 
 
 def get_articles(
@@ -131,6 +135,9 @@ def get_articles(
             doi_elem = article.find(".//article-id[@pub-id-type='doi']")
             doi = None if doi_elem is None else doi_elem.text
 
+            pmid_elem = article.find(".//article-id[@pub-id-type='pmid']")
+            pmid = None if pmid_elem is None else pmid_elem.text
+
             authors = []
             for pers in article.findall(".//contrib[@contrib-type='author']"):
                 name = pers.find("name[@name-style='western']")
@@ -164,7 +171,8 @@ def get_articles(
                     tuple(funding),
                     journal,
                     year,
-                    doi
+                    doi,
+                    pmid
                 )
             )
 
@@ -174,7 +182,8 @@ def get_articles(
 def main(
     save_fn: Union[Path, str],
     journals: Dict[str, List[Journal]],
-    time_sleep: Optional[float] = 1.0
+    time_sleep: Optional[float] = 1.0,
+    quiet: bool = False
 ) -> int:
     """
     Find medicine articles in the NLM Catalog.
@@ -183,6 +192,7 @@ def main(
         journals: a map of medical broad subjects to corresponding lists of
             medical journals in the NLM catalog.
         time_sleep: an optional amount of seconds to sleep between API calls.
+        quiet: whether to turn off progress bars.
     Returns:
         Exit code.
     """
@@ -190,10 +200,12 @@ def main(
     start_year: int = 2015
     end_year: int = 2025
 
-    results: Dict[str, List[NamedTuple]] = {}
+    results: Dict[str, List[Article]] = {}
     for broad_subject, subject_journals in journals.items():
         results[broad_subject] = []
-        for idx, journal in enumerate(subject_journals):
+        for idx, journal in enumerate(
+            tqdm(subject_journals, disable=quiet, desc=broad_subject)
+        ):
             n_journals = len(subject_journals)
             logger.info(f"Finding Articles in Journal {idx + 1}/{n_journals}")
             results[broad_subject].extend(
@@ -201,6 +213,18 @@ def main(
             )
             if time_sleep:
                 time.sleep(time_sleep)
+
+    for broad_subject, articles in results.items():
+        age_groups = get_age_groups(
+            [a.pmid for a in articles if a.pmid],
+            quiet=quiet,
+            desc=broad_subject,
+            time_sleep=time_sleep
+        )
+        results[broad_subject] = [
+            a._replace(age_group=age_groups.get(str(a.pmid), None))
+            for a in articles
+        ]
 
     save_nlm_query(
         save_fn,

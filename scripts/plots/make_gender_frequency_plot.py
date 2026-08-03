@@ -37,14 +37,29 @@ from core.plot_utils import BROAD_SUBJECTS, fmt_pval  # noqa
     show_default=True,
     help="Optional figure savepath."
 )
-def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
+@click.option(
+    "--by-age-group",
+    type=str,
+    default=None,
+    show_default=True,
+    help="Optional stratification of plot by age group of study."
+)
+def main(
+    datadir: Union[Path, str],
+    savedir: Optional[Union[Path, str]],
+    by_age_group: Optional[str]
+):
     """Make gender frequency forest plots."""
     plt.rcParams["font.family"] = ["Arial"]
 
-    m_df = get_data("male", datadir=datadir)
-    f_df = get_data("female", datadir=datadir)
-    m_change_df = get_change_data("male", datadir=datadir)
-    f_change_df = get_change_data("female", datadir=datadir)
+    m_df = get_data("male", datadir=datadir, by_age_group=by_age_group)
+    f_df = get_data("female", datadir=datadir, by_age_group=by_age_group)
+    m_change_df = get_change_data(
+        "male", datadir=datadir, by_age_group=by_age_group
+    )
+    f_change_df = get_change_data(
+        "female", datadir=datadir, by_age_group=by_age_group
+    )
 
     bse_ssq = np.square(m_change_df["bse"]) + np.square(f_change_df["bse"])
     wald_t = np.abs(m_change_df["est"] - f_change_df["est"]) / np.sqrt(bse_ssq)
@@ -273,8 +288,9 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
     plt.subplots_adjust(left=0.3, right=0.85, top=0.85, bottom=0.1)
 
     if savedir is not None:
+        suffix = f"_{by_age_group}" * (by_age_group is not None)
         plt.savefig(
-            os.path.join(str(savedir), "fig2.pdf"),
+            os.path.join(str(savedir), f"fig2{suffix}.pdf"),
             transparent=True,
             dpi=600,
             bbox_inches="tight"
@@ -285,7 +301,9 @@ def main(datadir: Union[Path, str], savedir: Optional[Union[Path, str]]):
 
 
 def get_data(
-    gender: str, datadir: Union[Path, str] = "Medicine Authorship"
+    gender: str,
+    datadir: Union[Path, str] = "Medicine Authorship",
+    by_age_group: Optional[str] = None
 ) -> pd.DataFrame:
     data: List[Dict[str, Any]] = []
     for i, category in enumerate([
@@ -297,6 +315,9 @@ def get_data(
         sub_datadir = os.path.join(str(datadir), category)
         for bs, fn in BROAD_SUBJECTS.items():
             df = pd.read_parquet(os.path.join(sub_datadir, fn))
+            if by_age_group is not None:
+                assert by_age_group in df["age_group"].unique()
+                df = df[df["age_group"] == by_age_group]
             total = len(df)
             y = 100.0 * float((df.gender == gender).sum()) / total
             data.append({
@@ -313,7 +334,8 @@ def get_data(
 def get_change_data(
     gender: str,
     datadir: Union[Path, str] = "Medicine Authorship",
-    confidence_level: float = 0.99
+    by_age_group: Optional[str] = None,
+    confidence_level: float = 0.999
 ) -> pd.DataFrame:
     data: List[Dict[str, Any]] = []
     for i, category in enumerate([
@@ -325,6 +347,9 @@ def get_change_data(
         sub_datadir = os.path.join(str(datadir), category)
         for bs, fn in BROAD_SUBJECTS.items():
             df = pd.read_parquet(os.path.join(sub_datadir, fn))
+            if by_age_group is not None:
+                assert by_age_group in df["age_group"].unique()
+                df = df[df["age_group"] == by_age_group]
             years = np.sort(df.year.unique())
             data_by_year = []
             for year in years:

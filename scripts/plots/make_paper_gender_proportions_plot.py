@@ -39,6 +39,13 @@ from core.plot_utils import BROAD_SUBJECTS, fmt_pval  # noqa
     help="Optional figure savepath."
 )
 @click.option(
+    "--by-age-group",
+    type=str,
+    default=None,
+    show_default=True,
+    help="Optional stratification of plot by age group of study."
+)
+@click.option(
     "--seed",
     type=int,
     default=2025,
@@ -48,6 +55,7 @@ from core.plot_utils import BROAD_SUBJECTS, fmt_pval  # noqa
 def main(
     datadir: Union[Path, str],
     savedir: Optional[Union[Path, str]],
+    by_age_group: Optional[str],
     seed: Optional[int],
     show_pvals: bool = False
 ):
@@ -64,6 +72,9 @@ def main(
     pvals: List[float] = []
     for bs, fn in BROAD_SUBJECTS.items():
         df = pd.read_parquet(os.path.join(sub_datadir, fn))[cols]
+        if by_age_group is not None:
+            assert by_age_group in df["age_group"].unique()
+            df = df[df["age_group"] == by_age_group]
         _, p = homophily_test(
             (df["frac_female"] * df["num_total_authors"]).astype(int),
             (df["frac_male"] * df["num_total_authors"]).astype(int)

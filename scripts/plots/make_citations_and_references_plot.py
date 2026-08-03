@@ -38,9 +38,17 @@ from core.plot_utils import BROAD_SUBJECTS, fmt_pval  # noqa
     show_default=True,
     help="Optional figure savepath."
 )
+@click.option(
+    "--by-age-group",
+    type=str,
+    default=None,
+    show_default=True,
+    help="Optional stratification of plot by age group of study."
+)
 def main(
     datadir: Union[Path, str],
     savedir: Optional[Union[Path, str]],
+    by_age_group: Optional[str],
     include_legend: bool = False,
     include_self_references: bool = False
 ):
@@ -59,7 +67,7 @@ def main(
     )
     axes = axes.flatten()
     for i, strat in enumerate(strats):
-        data = get_data(strat, datadir=datadir)
+        data = get_data(strat, datadir=datadir, by_age_group=by_age_group)
         for j, (metric, title) in enumerate(metric2title.items()):
             cleveland_dotplot(
                 axes[(len(metric2title.keys()) * i) + j], metric, title, *data
@@ -121,7 +129,8 @@ def main(
 def get_data(
     category: str,
     datadir: Union[Path, str] = "Medicine Authorship",
-    confidence_level: float = 0.99
+    by_age_group: Optional[str] = None,
+    confidence_level: float = 0.999
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     assert category in ["First Author", "Last Author"]
     data = []
@@ -129,6 +138,9 @@ def get_data(
     sub_datadir = os.path.join(str(datadir), category)
     for bs in BROAD_SUBJECTS.keys():
         df = pd.read_parquet(os.path.join(sub_datadir, BROAD_SUBJECTS[bs]))
+        if by_age_group is not None:
+            assert by_age_group in df["age_group"].unique()
+            df = df[df["age_group"] == by_age_group]
 
         stats: Dict[str, List[pd.Series]] = {
             "total_citations": [],

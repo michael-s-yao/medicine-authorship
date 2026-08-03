@@ -43,8 +43,8 @@ def evaluate_by_country(
     assert len(answer_key_df) == len(predictions_df)
 
     idxs = np.where(np.isin(predictions_df[prediction_col], GENDER_LABELS))
-    answer_key_df = answer_key_df.iloc[idxs]
-    predictions_df = predictions_df.iloc[idxs]
+    answer_key_df = answer_key_df.iloc[idxs]  # type: ignore
+    predictions_df = predictions_df.iloc[idxs]  # type: ignore
 
     df = answer_key_df.reset_index(drop=True).copy()
     df["predicted"] = predictions_df[prediction_col].reset_index(drop=True)

@@ -39,18 +39,26 @@ from core.plot_utils import BROAD_SUBJECTS, fmt_pval  # noqa
     show_default=True,
     help="Optional figure savepath."
 )
+@click.option(
+    "--by-age-group",
+    type=str,
+    default=None,
+    show_default=True,
+    help="Optional stratification of plot by age group of study."
+)
 def main(
     datadir: Union[Path, str],
     savedir: Optional[Union[Path, str]],
-    confidence_level: float = 0.99
+    by_age_group: Optional[str],
+    confidence_level: float = 0.999
 ):
     """Make journal SJR analysis plots."""
     plt.rcParams["font.family"] = ["Arial"]
     BLUE: Final[str] = "#3170AD"
     RED: Final[str] = "#90312C"
 
-    oa_df = get_open_access_data(datadir)
-    sjr_df = get_sjr_data(datadir)
+    oa_df = get_open_access_data(datadir, by_age_group=by_age_group)
+    sjr_df = get_sjr_data(datadir, by_age_group=by_age_group)
 
     fig, (oa_ax, change_oa_ax, ax) = plt.subplots(1, 3, figsize=(12, 12))
     plt.subplots_adjust(wspace=0.8)
@@ -260,12 +268,15 @@ def main(
 
 
 def get_open_access_data(
-    datadir: Union[Path, str] = "Medicine Authorship"
+    datadir: Union[Path, str] = "Medicine Authorship",
+    by_age_group: Optional[str] = None
 ) -> pd.DataFrame:
     data = []
     for strat in ["First Author", "Last Author"]:
         data.append({"type": "header_main", "label": strat + " Gender"})
-        raw_data = get_raw_open_access_data(strat, datadir=datadir)
+        raw_data = get_raw_open_access_data(
+            strat, datadir=datadir, by_age_group=by_age_group
+        )
         for bs in BROAD_SUBJECTS.keys():
             subset = raw_data[raw_data["label"] == bs]
             model = smf.glm(
@@ -323,13 +334,18 @@ def get_open_access_data(
 
 
 def get_raw_open_access_data(
-    category: str, datadir: Union[Path, str] = "Medicine Authorship"
+    category: str,
+    datadir: Union[Path, str] = "Medicine Authorship",
+    by_age_group: Optional[str] = None
 ) -> pd.DataFrame:
     sub_datadir = os.path.join(str(datadir), category)
     cols: Final[List[str]] = ["gender", "year", "journal_is_open_access"]
     dfs = []
     for bs, fn in BROAD_SUBJECTS.items():
         df = pd.read_parquet(os.path.join(sub_datadir, fn))
+        if by_age_group is not None:
+            assert by_age_group in df["age_group"].unique()
+            df = df[df["age_group"] == by_age_group]
         df = df[cols]
         df = df[df.gender.isin(["male", "female"])]
         df["journal_is_open_access"] = df["journal_is_open_access"] == "Yes"
@@ -342,12 +358,15 @@ def get_raw_open_access_data(
 
 def get_sjr_data(
     datadir: Union[Path, str] = "Medicine Authorship",
-    confidence_level: float = 0.99
+    by_age_group: Optional[str] = None,
+    confidence_level: float = 0.999
 ) -> pd.DataFrame:
     data: List[Dict[str, Any]] = []
     for strat in ["First Author", "Last Author"]:
         data.append({"type": "header_main", "label": strat + " Gender"})
-        raw_data = get_raw_sjr_data(strat, datadir=datadir)
+        raw_data = get_raw_sjr_data(
+            strat, datadir=datadir, by_age_group=by_age_group
+        )
         for bs in BROAD_SUBJECTS.keys():
             subset = raw_data[raw_data["label"] == bs]
             m_y = subset[subset["gender"] == "male"].journal_sjr
@@ -376,13 +395,18 @@ def get_sjr_data(
 
 
 def get_raw_sjr_data(
-    category: str, datadir: Union[Path, str] = "Medicine Authorship"
+    category: str,
+    datadir: Union[Path, str] = "Medicine Authorship",
+    by_age_group: Optional[str] = None
 ) -> pd.DataFrame:
     sub_datadir = os.path.join(str(datadir), category)
     cols: Final[List[str]] = ["gender", "year", "journal_sjr"]
     dfs = []
     for bs, fn in BROAD_SUBJECTS.items():
         df = pd.read_parquet(os.path.join(sub_datadir, fn))
+        if by_age_group is not None:
+            assert by_age_group in df["age_group"].unique()
+            df = df[df["age_group"] == by_age_group]
         df = df[cols]
         df = df[df.gender.isin(["male", "female"])]
         df = df[~df.journal_sjr.isna()]

@@ -41,6 +41,7 @@ def main(
     final_cols: Final[List[str]] = [
         "gender",
         "year",
+        "age_group",
         "journal_is_open_access",
         "journal_sjr",
         "journal_h_index",
